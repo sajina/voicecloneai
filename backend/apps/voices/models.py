@@ -88,7 +88,7 @@ class VoiceProfile(models.Model):
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
     emotion = models.CharField(max_length=20, choices=EMOTION_CHOICES, default='neutral')
     language = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, default='en')
-    sample_audio = models.FileField(upload_to='voice_samples/', null=True, blank=True)
+    sample_audio = models.FileField(upload_to='voiceprofile_audio/', null=True, blank=True)
     preview_image = models.ImageField(upload_to='voice_previews/', null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_premium = models.BooleanField(default=False)

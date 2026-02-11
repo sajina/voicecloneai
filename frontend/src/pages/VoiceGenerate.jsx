@@ -238,41 +238,47 @@ export function VoiceGenerate() {
   const handlePreview = async (e, profile) => {
     e.stopPropagation(); // Prevent card selection when clicking play
 
-    // Stop if currently playing this voice
+    // 1. Stop if currently playing THIS voice (Toggle Pause)
     if (previewPlayingId === profile.id) {
       if (previewAudioInstance.current) {
         previewAudioInstance.current.pause();
-        previewAudioInstance.current.currentTime = 0;
+        previewAudioInstance.current.currentTime = 0; // Reset to start
       }
       setPreviewPlayingId(null);
       return;
     }
 
-    // Stop any other preview
+    // 2. Stop ANY other preview playing
     if (previewAudioInstance.current) {
       previewAudioInstance.current.pause();
       previewAudioInstance.current = null;
     }
     setPreviewPlayingId(null);
 
-    // Start loading
+    // 3. Start Loading Logic
     setPreviewLoadingId(profile.id);
 
     try {
       let audioUrl = profile.sample_audio;
 
-      // If no sample audio, generate one on the fly
+      // If no sample audio, generate on the fly (ephemeral)
       if (!audioUrl) {
         const langCode = profile.language;
-        // Use localized text or fallback to English
         const template = SAMPLE_TEXTS[langCode] || SAMPLE_TEXTS['en'];
         const sampleText = template.replace('{name}', profile.name);
         
-        const result = await voicesApi.generateSpeech({
-          text: sampleText,
-          voice_profile_id: profile.id
-        }, true);
-        audioUrl = result.audio_file;
+        try {
+            const result = await voicesApi.generateSpeech({
+            text: sampleText,
+            voice_profile_id: profile.id
+            }, true);
+            audioUrl = result.audio_file;
+        } catch (err) {
+            console.error("Generation failed", err);
+            toast.error("Failed to generate preview");
+            setPreviewLoadingId(null);
+            return;
+        }
       }
 
       const url = getAudioUrl(audioUrl);
@@ -281,16 +287,46 @@ export function VoiceGenerate() {
       const audio = new Audio(url);
       previewAudioInstance.current = audio;
 
+      // Event Listeners
       audio.onended = () => {
         setPreviewPlayingId(null);
+        previewAudioInstance.current = null;
       };
 
-      await audio.play();
-      setPreviewPlayingId(profile.id);
+      audio.onpause = () => {
+        // Optional: verify if we should clear state
+        if (previewPlayingId === profile.id) {
+             setPreviewPlayingId(null);
+        }
+      };
+
+      // Play handling with AbortError catch
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            // Playback started successfully
+            setPreviewPlayingId(profile.id);
+          })
+          .catch(error => {
+            if (error.name === 'AbortError') {
+              console.log('Preview playback interrupted by user');
+            } else {
+              console.error('Preview playback failed:', error);
+              toast.error('Unable to play preview');
+            }
+            // Ensure state is reset if this specific audio failed
+            if (previewAudioInstance.current === audio) {
+                 setPreviewPlayingId(null);
+                 previewAudioInstance.current = null;
+            }
+          });
+      }
 
     } catch (error) {
-      console.error('Preview failed:', error);
-      toast.error('Failed to play preview');
+      console.error('Preview setup failed:', error);
+      toast.error('Failed to load preview');
+      setPreviewPlayingId(null);
     } finally {
       setPreviewLoadingId(null);
     }

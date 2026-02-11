@@ -172,7 +172,7 @@ class GenerateSpeechView(generics.CreateAPIView):
             print("DEBUG: Record saved successfully")
             
             return Response(
-                GeneratedSpeechSerializer(generated).data,
+                GeneratedSpeechSerializer(generated, context={'request': request}).data,
                 status=status.HTTP_201_CREATED
             )
             
