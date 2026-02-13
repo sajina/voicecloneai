@@ -1,14 +1,12 @@
 #!/bin/sh
 
-# Exit immediately if a command exits with a non-zero status
 set -e
 
 echo "Running migrations..."
 python manage.py migrate
 
 echo "Collecting static files..."
-python manage.py collectstatic --noinput
+python manage.py collectstatic --noinput || echo "WARNING: collectstatic failed, continuing..."
 
-echo "Starting Gunicorn..."
-# Bind to 0.0.0.0:$PORT
-exec gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 4 --threads 2
+echo "Starting Gunicorn on port ${PORT:-8000}..."
+exec gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --threads 2 --timeout 120
