@@ -40,34 +40,30 @@ except ImportError:
 
 load_dotenv()
 
+
+# =============================================================================
+# Core Settings
+# =============================================================================
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 DEBUG = ENVIRONMENT == 'development'
 
-if DEBUG:
-    ALLOWED_HOSTS = ['*']
-else:
-    ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost,ai-voice-cloning-production.up.railway.app').split(',') if h.strip()]
-    
-    # Production Security Settings
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+ALLOWED_HOSTS = ['*'] if DEBUG else [
+    h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost').split(',') if h.strip()
+]
 
-    CSRF_COOKIE_SAMESITE = "None"
-    SESSION_COOKIE_SAMESITE = "None"
+ROOT_URLCONF = 'config.urls'
+WSGI_APPLICATION = 'config.wsgi.application'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CSRF_TRUSTED_ORIGINS moved to CORS section for consolidation
 
-# Application definition
+# =============================================================================
+# Application Definition
+# =============================================================================
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -88,17 +84,15 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files in production
-    'corsheaders.middleware.CorsMiddleware',       # Must be before CommonMiddleware
-    'django.contrib.sessions.middleware.SessionMiddleware',  # Must be before CsrfViewMiddleware
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
     {
@@ -116,16 +110,15 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database configuration
-# Railway provides DATABASE_URL automatically when you add a database service
-# We map MYSQL_URL to DATABASE_URL if present, or use default DATABASE_URL
+# =============================================================================
+# Database
+# =============================================================================
+
 DATABASE_URL = os.getenv('MYSQL_URL', os.getenv('DATABASE_URL'))
 MYSQL_LOCALLY = os.getenv('MYSQL_LOCALLY', 'False').lower() == 'true'
 
 if MYSQL_LOCALLY:
-    # Local MySQL configuration
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -140,10 +133,7 @@ if MYSQL_LOCALLY:
         }
     }
 elif DATABASE_URL:
-    # Railway/Production: Use DATABASE_URL
     try:
-        # Use parse() explicitly to avoid dj_database_url reading a potentially 
-        # empty or invalid 'DATABASE_URL' environment variable.
         db_config = dj_database_url.parse(
             DATABASE_URL,
             conn_max_age=600,
@@ -151,12 +141,8 @@ elif DATABASE_URL:
         )
         DATABASES = {'default': db_config}
     except Exception as e:
-        print(f"ERROR: Invalid DATABASE_URL: {DATABASE_URL}. Error: {e}")
-        # Fallback to SQLite to allow app to start (at least to show logs) or raise cleaner error
-        # For production, we probably still want to crash, but printing the error is key for logs.
         raise ValueError(f"Invalid DATABASE_URL in environment settings: {e}")
 else:
-    # Local development fallback: Use SQLite (simpler, no driver issues)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -164,10 +150,13 @@ else:
         }
     }
 
-# Custom User Model
+
+# =============================================================================
+# Authentication
+# =============================================================================
+
 AUTH_USER_MODEL = 'users.User'
 
-# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -175,17 +164,27 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+
+# =============================================================================
 # Internationalization
+# =============================================================================
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static files
+
+# =============================================================================
+# Static & Media Files
+# =============================================================================
+
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Whitenoise for serving static files in production
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -195,14 +194,11 @@ STORAGES = {
     },
 }
 
-# Media files
-MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
 
-# Default primary key field type
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
+# =============================================================================
 # REST Framework
+# =============================================================================
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -219,7 +215,11 @@ REST_FRAMEWORK = {
     ],
 }
 
-# JWT Settings
+
+# =============================================================================
+# JWT
+# =============================================================================
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -229,69 +229,38 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
-# CORS & CSRF Configuration
-# ------------------------------------------------------------------------------
-# Robust Environment Variable Parsing
+
+# =============================================================================
+# CORS & CSRF
+# =============================================================================
+
 def parse_cors_origins(env_key, default=''):
     origins = os.getenv(env_key, default)
     return [o.strip() for o in origins.split(',') if o.strip()]
 
-# CORS Allowed Origins
-# Defaults include localhost for development
-default_cors = 'http://localhost:5173,http://localhost:3000,https://joyful-warmth-production.up.railway.app'
-CORS_ALLOWED_ORIGINS = parse_cors_origins('CORS_ALLOWED_ORIGINS', default_cors)
-
-# CSRF Trusted Origins
-# Defaults include localhost and railway domains
-default_csrf = 'http://localhost:5173,https://voicecloneai-production.up.railway.app,https://joyful-warmth-production.up.railway.app'
-CSRF_TRUSTED_ORIGINS = parse_cors_origins('CSRF_TRUSTED_ORIGINS', default_csrf)
-
-# Production Security
-if not DEBUG:
-    # In production, trust the environment variables explicitly
-    # But ensure we have at least the railway app
-    if not CORS_ALLOWED_ORIGINS:
-         CORS_ALLOWED_ORIGINS = ["https://joyful-warmth-production.up.railway.app"]
-    
-    if not CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS = ["https://voicecloneai-production.up.railway.app", "https://joyful-warmth-production.up.railway.app"]
+CORS_ALLOWED_ORIGINS = parse_cors_origins(
+    'CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000'
+)
+CSRF_TRUSTED_ORIGINS = parse_cors_origins(
+    'CSRF_TRUSTED_ORIGINS', 'http://localhost:5173'
+)
 
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
+    'DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT',
 ]
 
 CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+    'accept', 'accept-encoding', 'authorization', 'content-type',
+    'dnt', 'origin', 'user-agent', 'x-csrftoken', 'x-requested-with',
 ]
 
-# Debug Logging for CORS/CSRF (Helper to verify config on startup)
-print("=" * 50)
-print("CORS/CSRF Configuration Debug:")
-print(f"  DEBUG: {DEBUG}")
-print(f"  CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
-print(f"  CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
-try:
-    print(f"  ALLOWED_HOSTS: {ALLOWED_HOSTS}")
-except NameError:
-    print("  ALLOWED_HOSTS: Not defined yet")
-print("=" * 50)
 
-# Email Configuration
+# =============================================================================
+# Email
+# =============================================================================
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
@@ -299,4 +268,35 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-EMAIL_TIMEOUT = 10  # Prevent SMTP from hanging too long
+EMAIL_TIMEOUT = 10
+
+
+# =============================================================================
+# Security (Production)
+# =============================================================================
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    CSRF_COOKIE_SAMESITE = "None"
+    SESSION_COOKIE_SAMESITE = "None"
+
+
+# =============================================================================
+# Debug Logging
+# =============================================================================
+
+print("=" * 50)
+print("CORS/CSRF Configuration Debug:")
+print(f"  DEBUG: {DEBUG}")
+print(f"  CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
+print(f"  CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
+print(f"  ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+print("=" * 50)

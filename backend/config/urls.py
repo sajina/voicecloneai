@@ -10,7 +10,7 @@ from django.http import JsonResponse
 
 
 def health_check(request):
-    """Health check endpoint for Railway deployment."""
+    """Health check endpoint for deployment."""
     return JsonResponse({'status': 'healthy'})
 
 

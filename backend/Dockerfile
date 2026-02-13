@@ -24,9 +24,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app/
 
 # We do NOT run collectstatic here because it requires DB access/Secret Key.
-# We let the Procfile handle it at runtime, or we will set a dummy secret key if needed.
+# The entrypoint.sh handles it at runtime.
 
-# Expose port (Railway will override this but good for documentation)
+# Expose port
 EXPOSE 8000
 
 # Command to run the application

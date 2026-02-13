@@ -38,7 +38,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # and outputs them to /etc/nginx/conf.d/
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 
-# Expose the port (Railway will override the PORT env var, but default to 3000)
+# Expose the port (default to 3000)
 ENV PORT=3000
 EXPOSE 3000
 
