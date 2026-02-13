@@ -234,26 +234,11 @@ SIMPLE_JWT = {
 # CORS & CSRF
 # =============================================================================
 
-def parse_cors_origins(env_key, default=''):
-    origins = os.getenv(env_key, default)
-    return [o.strip() for o in origins.split(',') if o.strip()]
-
-CORS_ALLOWED_ORIGINS = parse_cors_origins(
-    'CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000'
-)
-CSRF_TRUSTED_ORIGINS = parse_cors_origins(
-    'CSRF_TRUSTED_ORIGINS', 'http://localhost:5173'
-)
-
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_METHODS = [
-    'DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT',
-]
-
-CORS_ALLOW_HEADERS = [
-    'accept', 'accept-encoding', 'authorization', 'content-type',
-    'dnt', 'origin', 'user-agent', 'x-csrftoken', 'x-requested-with',
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173').split(',') if o.strip()
 ]
 
 
