@@ -281,7 +281,7 @@ if not DEBUG:
 print("=" * 50)
 print("CORS/CSRF Configuration Debug:")
 print(f"  DEBUG: {DEBUG}")
-print(f"  CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
+print(f"  CORS_ALLOWED_ORIGINS: {CORS_ALLOW_ALL_ORIGINS}")
 print(f"  CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
 print(f"  ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 print("=" * 50)
