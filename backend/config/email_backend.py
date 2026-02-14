@@ -1,31 +1,30 @@
 """
-Custom email backend using Resend HTTP API.
+Custom email backend using Resend Python SDK.
 Bypasses SMTP entirely — works on Railway where SMTP ports are blocked.
 """
 
-import json
-import urllib.request
-import urllib.error
+import resend
 from django.conf import settings
 from django.core.mail.backends.base import BaseEmailBackend
 
 
 class ResendEmailBackend(BaseEmailBackend):
     """
-    Send emails via Resend's HTTP API (https://resend.com).
+    Send emails via Resend SDK (https://resend.com).
     
-    Required setting:
+    Required settings:
         RESEND_API_KEY = 'your-api-key'
+        DEFAULT_FROM_EMAIL = 'Your App <onboarding@resend.dev>'  (or verified domain)
     """
-
-    api_url = 'https://api.resend.com/emails'
 
     def __init__(self, fail_silently=False, **kwargs):
         super().__init__(fail_silently=fail_silently, **kwargs)
-        self.api_key = getattr(settings, 'RESEND_API_KEY', None)
+        api_key = getattr(settings, 'RESEND_API_KEY', None)
+        if api_key:
+            resend.api_key = api_key
 
     def send_messages(self, email_messages):
-        if not self.api_key:
+        if not resend.api_key:
             if not self.fail_silently:
                 raise ValueError("RESEND_API_KEY is not set in Django settings.")
             return 0
@@ -41,38 +40,23 @@ class ResendEmailBackend(BaseEmailBackend):
         return sent_count
 
     def _send(self, message):
-        payload = {
-            'from': message.from_email,
-            'to': list(message.to),
-            'subject': message.subject,
-            'text': message.body,
+        params: resend.Emails.SendParams = {
+            "from": message.from_email,
+            "to": list(message.to),
+            "subject": message.subject,
         }
 
-        # Support HTML content
-        if message.content_subtype == 'html':
-            payload['html'] = message.body
+        # Use HTML or plain text
+        if hasattr(message, 'content_subtype') and message.content_subtype == 'html':
+            params["html"] = message.body
+        else:
+            params["html"] = f"<p>{message.body}</p>"
 
         # Add CC and BCC if present
         if message.cc:
-            payload['cc'] = list(message.cc)
+            params["cc"] = list(message.cc)
         if message.bcc:
-            payload['bcc'] = list(message.bcc)
+            params["bcc"] = list(message.bcc)
 
-        data = json.dumps(payload).encode('utf-8')
-
-        req = urllib.request.Request(
-            self.api_url,
-            data=data,
-            headers={
-                'Authorization': f'Bearer {self.api_key}',
-                'Content-Type': 'application/json',
-            },
-            method='POST',
-        )
-
-        try:
-            response = urllib.request.urlopen(req, timeout=30)
-            return json.loads(response.read().decode('utf-8'))
-        except urllib.error.HTTPError as e:
-            error_body = e.read().decode('utf-8')
-            raise Exception(f"Resend API error ({e.code}): {error_body}")
+        email = resend.Emails.send(params)
+        return email

@@ -221,21 +221,14 @@ CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
 # Email
 # =============================================================================
 
-# In production (Railway), use Brevo SMTP relay on port 2525
-# (Railway blocks standard SMTP ports 587/465, but 2525 works).
+# In production (Railway), use Resend HTTP API since SMTP ports are blocked.
 # In development, use regular Gmail SMTP.
-BREVO_SMTP_KEY = os.getenv('BREVO_SMTP_KEY')
+RESEND_API_KEY = os.getenv('RESEND_API_KEY')
 
-if BREVO_SMTP_KEY and not DEBUG:
-    # Production: Brevo SMTP relay on port 2525
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = 'smtp-relay.brevo.com'
-    EMAIL_PORT = 587
-    EMAIL_USE_TLS = True
-    EMAIL_HOST_USER = os.getenv('BREVO_SMTP_LOGIN', os.getenv('EMAIL_HOST_USER'))
-    EMAIL_HOST_PASSWORD = BREVO_SMTP_KEY
-    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', os.getenv('EMAIL_HOST_USER'))
-    EMAIL_TIMEOUT = 30
+if RESEND_API_KEY and not DEBUG:
+    # Production: Resend HTTP API (no SMTP needed)
+    EMAIL_BACKEND = 'config.email_backend.ResendEmailBackend'
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'VoiceAI <onboarding@resend.dev>')
 else:
     # Development: Gmail SMTP
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
