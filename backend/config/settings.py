@@ -91,7 +91,7 @@ TEMPLATES = [
 # =============================================================================
 # Railway provides a DATABASE_URL environment variable (usually PostgreSQL)
 # If not set, fallback to SQLite for local testing (not recommended in production)
-DATABASE_URL = os.getenv('DATABASE_URL')
+DATABASE_URL = os.getenv('DATABASE_URL') or os.getenv('MYSQL_URL')
 if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.config(
