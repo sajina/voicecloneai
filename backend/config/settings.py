@@ -9,6 +9,20 @@ from datetime import timedelta
 import dj_database_url
 from dotenv import load_dotenv
 
+# Force IPv4 on Railway (IPv6 is not available in Railway containers,
+# causing "Network is unreachable" when connecting to smtp.gmail.com)
+import socket
+_original_getaddrinfo = socket.getaddrinfo
+
+def _ipv4_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    """Force IPv4 by setting family to AF_INET when family is unspecified."""
+    if family == 0:
+        family = socket.AF_INET
+    return _original_getaddrinfo(host, port, family, type, proto, flags)
+
+if os.getenv('ENVIRONMENT') == 'production':
+    socket.getaddrinfo = _ipv4_getaddrinfo
+
 # Load environment variables from .env only in development
 # In production, Railway injects them directly
 load_dotenv()
