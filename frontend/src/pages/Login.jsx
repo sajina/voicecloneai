@@ -54,7 +54,7 @@ export function Login() {
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value.trim())}
                 required
                 className="bg-background/50"
               />
