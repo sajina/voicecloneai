@@ -1,45 +1,17 @@
 """
 Django settings for AI Voice Cloning application.
+Optimized for deployment on Railway.app.
 """
 
 import os
 from pathlib import Path
 from datetime import timedelta
-from dotenv import load_dotenv
 import dj_database_url
+from dotenv import load_dotenv
 
-# Use PyMySQL as MySQL driver (for Windows compatibility)
-try:
-    import pymysql
-    pymysql.version_info = (2, 2, 1, "final", 0)  # Fake mysqlclient version
-    pymysql.install_as_MySQLdb()
-except ImportError:
-    pass
-
-# Patch to allow older MariaDB versions (e.g. 10.4) on local env
-# Django 5 requires MariaDB 10.6+, but we want to support local 10.4
-try:
-    from django.db.backends.mysql import base as mysql_base
-    original_check = mysql_base.DatabaseWrapper.check_database_version_supported
-
-    def patched_check_version(self):
-        try:
-            original_check(self)
-        except Exception:
-            # Bypass version check for local development
-            pass
-            
-    mysql_base.DatabaseWrapper.check_database_version_supported = patched_check_version
-    
-    # Patch feature flag to disable RETURNING clause (not supported in MariaDB < 10.5)
-    # Django 5 enables this by default for MariaDB, causing 1064 syntax errors on 10.4
-    from django.db.backends.mysql.features import DatabaseFeatures
-    DatabaseFeatures.can_return_columns_from_insert = False
-except ImportError:
-    pass
-
+# Load environment variables from .env only in development
+# In production, Railway injects them directly
 load_dotenv()
-
 
 # =============================================================================
 # Core Settings
@@ -47,13 +19,16 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production')
-ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+
+# Railway sets ENVIRONMENT automatically, default to 'production' if not set
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'production')
 DEBUG = ENVIRONMENT == 'development'
 
-ALLOWED_HOSTS = ['*'] if DEBUG else [
-    h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost').split(',') if h.strip()
-]
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
+if DEBUG:
+    ALLOWED_HOSTS = ['*']  # Allow all hosts in development
 
 ROOT_URLCONF = 'config.urls'
 WSGI_APPLICATION = 'config.wsgi.application'
@@ -84,7 +59,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serves static files efficiently
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -114,35 +89,19 @@ TEMPLATES = [
 # =============================================================================
 # Database
 # =============================================================================
-
-DATABASE_URL = os.getenv('MYSQL_URL', os.getenv('DATABASE_URL'))
-MYSQL_LOCALLY = os.getenv('MYSQL_LOCALLY', 'False').lower() == 'true'
-
-if MYSQL_LOCALLY:
+# Railway provides a DATABASE_URL environment variable (usually PostgreSQL)
+# If not set, fallback to SQLite for local testing (not recommended in production)
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('MYSQL_DATABASE', 'ai_voice_db'),
-            'USER': os.getenv('MYSQLUSER', 'root'),
-            'PASSWORD': os.getenv('MYSQL_ROOT_PASSWORD', ''),
-            'HOST': os.getenv('MYSQLHOST', 'localhost'),
-            'PORT': os.getenv('MYSQLPORT', '3306'),
-            'OPTIONS': {
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            },
-        }
-    }
-elif DATABASE_URL:
-    try:
-        db_config = dj_database_url.parse(
-            DATABASE_URL,
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
             conn_max_age=600,
             conn_health_checks=True,
         )
-        DATABASES = {'default': db_config}
-    except Exception as e:
-        raise ValueError(f"Invalid DATABASE_URL in environment settings: {e}")
+    }
 else:
+    # Local fallback – use SQLite
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -190,7 +149,7 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 
@@ -234,12 +193,14 @@ SIMPLE_JWT = {
 # CORS & CSRF
 # =============================================================================
 
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+# In production, set CORS_ALLOWED_ORIGINS to your frontend domain(s)
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
+    CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = [
-    o.strip() for o in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173').split(',') if o.strip()
-]
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
 
 
 # =============================================================================
@@ -261,6 +222,7 @@ EMAIL_TIMEOUT = 10
 # =============================================================================
 
 if not DEBUG:
+    # Security settings for HTTPS
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
@@ -270,18 +232,25 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    CSRF_COOKIE_SAMESITE = "None"
-    SESSION_COOKIE_SAMESITE = "None"
+    # Adjust SameSite for cross‑origin cookies if needed
+    CSRF_COOKIE_SAMESITE = "None" if CORS_ALLOW_CREDENTIALS else "Lax"
+    SESSION_COOKIE_SAMESITE = "None" if CORS_ALLOW_CREDENTIALS else "Lax"
 
 
 # =============================================================================
-# Debug Logging
+# Logging (optional)
 # =============================================================================
 
-print("=" * 50)
-print("CORS/CSRF Configuration Debug:")
-print(f"  DEBUG: {DEBUG}")
-print(f"  CORS_ALLOWED_ORIGINS: {CORS_ALLOW_ALL_ORIGINS}")
-print(f"  CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
-print(f"  ALLOWED_HOSTS: {ALLOWED_HOSTS}")
-print("=" * 50)
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+}
