@@ -117,12 +117,10 @@ class SendOTPView(generics.CreateAPIView):
                 fail_silently=False,  # We catch exceptions below to prevent crash
             )
         except Exception as e:
+            import traceback
             print("EMAIL ERROR:", e)
-            # We do NOT raise here to avoid 500 error on client side if email fails
-            # This mimics fail_silently=True but with logging
-            # return Response({'error': 'Email failed'}, status=500) # Optional: return error
-            # For now, we proceed as if sent, or strict:
-            return Response({'error': 'Failed to send email. Check logs.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            traceback.print_exc()
+            return Response({'error': f'Failed to send email: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response({'message': 'OTP sent to your email'}, status=status.HTTP_200_OK)
 
