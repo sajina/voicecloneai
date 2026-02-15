@@ -171,7 +171,7 @@ export function Pricing() {
                      <Loader2 className="w-8 h-8 animate-spin text-black" />
                    ) : qrCode ? (
                      <img 
-                      src={qrCode.startsWith('http') ? qrCode : `http://127.0.0.1:8000${qrCode}`} 
+                      src={qrCode.startsWith('http') ? qrCode : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}${qrCode}`} 
                       alt="Payment QR" 
                       className="w-full h-full object-contain" 
                      />
