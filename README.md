@@ -65,6 +65,16 @@ Railway puts ephemeral data in a container. For persistence:
 1. Add a **PostgreSQL** or **MySQL** service in Railway.
 2. It will automatically link `DATABASE_URL` to your backend.
 
+### 6. Email Configuration (Gmail SMTP - Free)
+If you don't have a custom domain for Resend, use Gmail:
+
+1.  **Generate App Password**: Go to Google Account -> Security -> App Passwords.
+2.  **Railway Variables**:
+    *   **DELETE** `RESEND_API_KEY` (Important!).
+    *   Set `EMAIL_HOST_USER` = `your@gmail.com`
+    *   Set `EMAIL_HOST_PASSWORD` = `16-digit-app-password`
+    *   Set `DEFAULT_FROM_EMAIL` = `your@gmail.com`
+
 ---
 
 ## 🔐 Admin Access
