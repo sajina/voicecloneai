@@ -5,6 +5,9 @@ set -e
 echo "Running migrations..."
 python manage.py migrate
 
+echo "Ensuring admin user exists..."
+python manage.py ensure_admin
+
 echo "Collecting static files..."
 python manage.py collectstatic --noinput || echo "WARNING: collectstatic failed, continuing..."
 
