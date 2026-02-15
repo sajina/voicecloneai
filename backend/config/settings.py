@@ -214,17 +214,30 @@ SIMPLE_JWT = {
 # =============================================================================
 
 # In production, set CORS_ALLOWED_ORIGINS to your frontend domain(s)
+# Helper to clean origins (remove paths/trailing slashes)
+def clean_origin(url):
+    url = url.strip()
+    if not url: return ''
+    try:
+        from urllib.parse import urlparse
+        p = urlparse(url)
+        if p.scheme and p.netloc:
+            return f"{p.scheme}://{p.netloc}"
+    except:
+        pass
+    return url.rstrip('/')
+
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
-    CORS_ALLOWED_ORIGINS = [o.strip() for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()]
+    CORS_ALLOWED_ORIGINS = [clean_origin(o) for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()]
     CORS_ALLOW_CREDENTIALS = True
-    # Auto-add the frontend URL from env var (set this in Railway)
-    FRONTEND_URL = os.getenv('FRONTEND_URL', '')
+    
+    FRONTEND_URL = clean_origin(os.getenv('FRONTEND_URL', ''))
     if FRONTEND_URL and FRONTEND_URL not in CORS_ALLOWED_ORIGINS:
         CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
 
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
+CSRF_TRUSTED_ORIGINS = [clean_origin(o) for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
 # Auto-add Railway public domain for CSRF
 if RAILWAY_PUBLIC_DOMAIN:
     railway_origin = f'https://{RAILWAY_PUBLIC_DOMAIN}'
