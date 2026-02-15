@@ -11,7 +11,9 @@ from .views import (
     SendOTPView,
     VerifyOTPView,
     TextMailView,
+    TextMailView,
     DebugCORSView,
+    TestEmailView,
 )
 
 router = DefaultRouter()
@@ -27,5 +29,6 @@ urlpatterns = [
     path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
     path('text-mail/', TextMailView.as_view(), name='text-mail'),
     path('debug-cors/', DebugCORSView.as_view(), name='debug-cors'),
+    path('test-email/', TestEmailView.as_view(), name='test-email'),
     path('', include(router.urls)),
 ]

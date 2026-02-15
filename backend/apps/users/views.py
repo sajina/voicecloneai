@@ -265,5 +265,62 @@ class DebugCORSView(generics.GenericAPIView):
             'ALLOWED_HOSTS': settings.ALLOWED_HOSTS,
             'Request Origin': request.headers.get('Origin', 'No Origin Header'),
             'Request Host': request.get_host(),
-            'Request Headers': headers,
         })
+
+
+class TestEmailView(generics.GenericAPIView):
+    """Diagnostic endpoint to test email configuration."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    
+    def get(self, request):
+        import socket
+        import smtplib
+        from django.conf import settings
+        
+        results = {
+            'settings': {
+                'EMAIL_BACKEND': settings.EMAIL_BACKEND,
+                'EMAIL_HOST': settings.EMAIL_HOST,
+                'EMAIL_PORT': settings.EMAIL_PORT,
+                'EMAIL_USE_TLS': settings.EMAIL_USE_TLS,
+                'EMAIL_USE_SSL': getattr(settings, 'EMAIL_USE_SSL', False),
+            },
+            'tests': []
+        }
+        
+        host = settings.EMAIL_HOST
+        port = int(settings.EMAIL_PORT)
+        
+        # 1. DNS Resolution
+        try:
+            addr_info = socket.getaddrinfo(host, port)
+            ip = addr_info[0][4][0]
+            results['tests'].append({'name': 'DNS Resolution', 'status': 'PASS', 'details': f"Resolved to {ip}"})
+        except Exception as e:
+            results['tests'].append({'name': 'DNS Resolution', 'status': 'FAIL', 'details': str(e)})
+
+        # 2. Connectivity
+        try:
+            sock = socket.create_connection((host, port), timeout=5)
+            sock.close()
+            results['tests'].append({'name': 'TCP Connection', 'status': 'PASS', 'details': f"Connected to {host}:{port}"})
+        except Exception as e:
+            results['tests'].append({'name': 'TCP Connection', 'status': 'FAIL', 'details': str(e)})
+            
+        # 3. SMTP Login
+        try:
+            if getattr(settings, 'EMAIL_USE_SSL', False):
+                server = smtplib.SMTP_SSL(host, port, timeout=10)
+            else:
+                server = smtplib.SMTP(host, port, timeout=10)
+                if settings.EMAIL_USE_TLS:
+                    server.starttls()
+            
+            server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+            server.quit()
+            results['tests'].append({'name': 'SMTP Login', 'status': 'PASS', 'details': 'Login successful'})
+        except Exception as e:
+            results['tests'].append({'name': 'SMTP Login', 'status': 'FAIL', 'details': str(e)})
+            
+        return Response(results)
