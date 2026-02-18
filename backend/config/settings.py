@@ -262,7 +262,7 @@ RESEND_API_KEY = os.getenv('RESEND_API_KEY')
 if RESEND_API_KEY and not DEBUG:
     # Production: Resend HTTP API (no SMTP needed)
     EMAIL_BACKEND = 'config.email_backend.ResendEmailBackend'
-    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'VoiceAI <onboarding@resend.dev>')
+    DEFAULT_FROM_EMAIL = 'onboarding@resend.dev'
 else:
     # Development: Gmail SMTP
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
