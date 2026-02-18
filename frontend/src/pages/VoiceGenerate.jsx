@@ -477,7 +477,7 @@ export function VoiceGenerate() {
                   )}
 
                   {/* Voice Profiles Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {filteredProfiles.map((profile) => {
                       const isSelected = selectedVoiceIds.has(profile.id.toString());
                       return (
@@ -618,7 +618,8 @@ export function VoiceGenerate() {
               {generatedHistory.map((item, index) => (
                 <Card key={item.id || index} className="glass border-white/10">
                   <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 w-full sm:w-auto">
                       <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
                         <Volume2 className="w-5 h-5 text-white" />
                       </div>
@@ -630,7 +631,8 @@ export function VoiceGenerate() {
                           Duration: {item.duration_seconds?.toFixed(1)}s
                         </p>
                       </div>
-                      <div className="flex gap-2">
+                      </div>
+                      <div className="flex gap-2 self-end sm:self-center">
                         <Button 
                           variant="ghost" 
                           size="icon" 

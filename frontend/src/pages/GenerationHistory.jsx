@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,15 @@ export function GenerationHistory() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [playingId, setPlayingId] = useState(null);
-  const audioRefs = {};
+  const currentAudioRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     loadHistory();
@@ -35,26 +43,35 @@ export function GenerationHistory() {
     // Determine the full URL
     const fullUrl = url.startsWith('http') ? url : `http://127.0.0.1:8000${url}`;
     
-    // If playing this one, pause it
+    // If clicking the same button that is currently playing
     if (playingId === id) {
-        audioRefs[id]?.pause();
+        if (currentAudioRef.current) {
+            currentAudioRef.current.pause();
+        }
         setPlayingId(null);
         return;
     }
 
-    // Stop current playing
-    if (playingId && audioRefs[playingId]) {
-        audioRefs[playingId].pause();
-        audioRefs[playingId].currentTime = 0;
+    // Stop currently playing audio if any
+    if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
     }
 
-    // Initialize audio if needed
-    if (!audioRefs[id]) {
-        audioRefs[id] = new Audio(fullUrl);
-        audioRefs[id].onended = () => setPlayingId(null);
-    }
-
-    audioRefs[id].play();
+    // Create and play new audio
+    const newAudio = new Audio(fullUrl);
+    newAudio.onended = () => setPlayingId(null);
+    newAudio.onerror = (e) => {
+        console.error("Audio playback error:", e);
+        setPlayingId(null);
+    };
+    
+    currentAudioRef.current = newAudio;
+    newAudio.play().catch(err => {
+        console.error("Failed to play audio:", err);
+        setPlayingId(null);
+    });
+    
     setPlayingId(id);
   };
 

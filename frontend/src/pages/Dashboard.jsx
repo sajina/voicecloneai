@@ -245,14 +245,14 @@ export function Dashboard() {
                 {stats.recentHistory.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-background/50 hover:bg-background/80 transition-colors"
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg bg-background/50 hover:bg-background/80 transition-colors gap-4"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
+                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                      <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center shrink-0">
                         <FileAudio className="w-5 h-5 text-white" />
                       </div>
-                      <div>
-                        <p className="font-medium line-clamp-1">
+                      <div className="min-w-0">
+                        <p className="font-medium line-clamp-1 break-all">
                           {item.input_text?.substring(0, 50)}...
                         </p>
                         <p className="text-sm text-muted-foreground">
@@ -263,7 +263,7 @@ export function Dashboard() {
                       </div>
                     </div>
                     {item.audio_file && (
-                      <div className="flex gap-1">
+                      <div className="flex gap-2 self-end sm:self-center">
                         <Button 
                           variant="ghost" 
                           size="icon"
